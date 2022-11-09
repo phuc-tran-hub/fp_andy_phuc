@@ -1,0 +1,86 @@
+#!/usr/bin/env python
+# The line above is important so that this file is interpreted with Python when running it.
+
+# Import of python modules.
+import random
+import json
+import networkx as nx
+from PIL import Image
+import numpy as np
+
+# import of relevant libraries.
+import rospy  # module for ROS APIs
+from std_msgs.msg import String  # message type for cmd_vel
+
+
+class Quadtree():
+    def __init__(self):
+        """Constructor."""
+
+        # Setting up publishers/subscribers.
+        self.name = rospy.get_name()
+
+        # self._waypoints_pub = rospy.Publisher(
+        #     self.name+DEFAULT_WAYPOINTS_TOPIC, String, queue_size=1)
+        self.map = np.array(Image.open(
+            "/root/catkin_ws/src/fp_andy_phuc/nodes/map.png", mode="r"))
+        self.map = self.map[:, :, 0]/255
+
+        self.space_size = 64
+        self.area = {"left": 0, "right": self.space_size,
+                     "bottom": 0, "top": self.space_size}
+
+        quadtree = self.subdivide(self.area, 3, self.map)
+        rospy.loginfo(quadtree)
+
+    # Subdivide quadtree
+    def subdivide(self, square, iterations, map, adj_squares=[]):
+
+        # If the square does not have any obstacles, return it
+        if np.all(map):
+            return [square]
+        elif iterations > 0:
+            squares = []
+            for i in range(2):
+                for j in range(2):
+                    left = square["left"] + i * \
+                        (square["right"] - square["left"]) / 2
+                    right = square["left"] + \
+                        (i + 1) * (square["right"] - square["left"]) / 2
+                    bottom = square["bottom"] + j * \
+                        (square["top"] - square["bottom"]) / 2
+                    top = square["bottom"] + \
+                        (j + 1) * (square["top"] - square["bottom"]) / 2
+
+                    sub_map = map[int(left):int(right), int(bottom):int(top)]
+
+                    new_squares = self.subdivide(
+                        {"left": left, "right": right, "bottom": bottom, "top": top}, iterations - 1, sub_map, adj_squares=adj_squares)
+                    squares.extend(new_squares)
+            return squares
+        else:
+            return []
+
+
+def main():
+    """Main function."""
+
+    # 1st. initialization of node.
+    rospy.init_node("quadtree")
+
+    # Sleep for a few seconds to wait for the registration.
+    rospy.sleep(2)
+
+    # Initialization of the class for the simple motion.
+    quadtree = Quadtree()
+
+    # Repeated movement, one iteration per side.
+    try:
+        rospy.sleep(2)
+    except rospy.ROSInterruptException:
+        rospy.logerr("ROS node interrupted.")
+
+
+if __name__ == "__main__":
+    """Run the main function."""
+    main()
