@@ -1,34 +1,18 @@
+#!/usr/bin/env python
+
 # Name: Phuc Tran and Andy Kotz
 # Task: Machine Learning Implementation of Conflict Based Search
+
+import rospy 
 
 import networkx as nx
 import math
 import random
 import copy
-import matplotlib.pyplot as plt
-import json
-
-robot_linear_vel = 0.2  # m/s
-robot_angular_vel = 0.2 # rad/s
-
-# ros parameters
-constraint_list = []
-robot_names = ["/tb3_0", "/tb3_1", "/tb3_2", "/tb3_3"]
-goal_names = ["/goal_0", "/goal_1", "/goal_2", "/goal_3"]
-robot_locations = [[0,2], [0,4], [0,6], [0,8]]
-goal_locations = [[6,4], [2,2], [9,1], [2, 8]]
-
-# global parameters (instance variables)
-location_graph = nx.Graph()
-task_allocation_dict = {}
-task_path_dict = {}
-time_stamp_dict = {}
+import matplotlib.pyplot as plt 
 
 # GOAL: Create a connected graph of robots, goals, and possible location nodes
-
-
-def include_robot():
-    global location_graph
+def include_robot(robot_locations, goal_locations):
     """Include the robots' poses in the new tree."""
     # Initialize a location graph
     location_graph = nx.Graph()
@@ -54,6 +38,7 @@ def include_robot():
         location_graph.add_node(goal_node_i, location=[x, y])
         i += 1
 
+    return location_graph
 
 def construct_graph(spanning_tree, num_node, threshold, grid_x, grid_y):
     """Create a spanning tree that covers all nodes."""
@@ -202,7 +187,6 @@ def find_node_conflict(robot1, robot2):
         shorter_path = path2
         longer_path = path1
 
-    num_conflict = 0
     robot1_timestamp_dict = time_stamp_dict[robot1]
     robot2_timestamp_dict = time_stamp_dict[robot2]
     for node in shorter_path[1:]:
@@ -246,27 +230,41 @@ def resolve_conflict():
 
 def perform_cbs():
     """A blackbox to perform conflict-based search"""
-    global location_graph
+    rospy.loginfo("hello")
+    spanning_tree = nx.Graph()
+
+    robot_linear_vel = 0.2  # m/s
+    robot_angular_vel = 0.2 # rad/s
+
+    # ros parameters
+    constraint_list = []
+    robot_names = rospy.get_param("robot_names")
+    goal_names = rospy.get_param("goal_names")
+    robot_locations = rospy.get_param("robot_locations")
+    goal_locations = rospy.get_param("goal_locations")
+
+    # global parameters (instance variables)
+    task_allocation_dict = {}
+    task_path_dict = {}
+    time_stamp_dict = {}
 
     # Let's create the base global location graph
-    include_robot()
-    location_graph = construct_graph(location_graph, 15, 2, 10, 10)
+    location_graph = include_robot(robot_locations, goal_locations)
+
+    # location_graph = construct_graph(spanning_tree, location_graph, 15, 2, 10, 10)
     nx.draw(location_graph, with_labels=True)
-    plt.savefig("location_graph.png")
+    plt.savefig("/root/catkin_ws/src/location_graph.png")
 
-    # Allocate the robots to each goals and calculate the time stamp
-    allocate()
-    calculate_timestamp()
-    print(time_stamp_dict)
+    # # Allocate the robots to each goals and calculate the time stamp
+    # allocate()
+    # calculate_timestamp()
+    # print(time_stamp_dict)
 
-    # If a conflict occurs
-    while resolve_conflict() > 0:
+    # # If a conflict occurs
+    # while resolve_conflict() > 0:
 
-        print(time_stamp_dict)
-        # Allocate but there will be conflicts next time, as well as the timestamp, so we can resolve future conflicts
-        allocate()
-        calculate_timestamp()
-
-
-perform_cbs()
+    #     print(time_stamp_dict)
+    #     # Allocate but there will be conflicts next time, as well as the timestamp, so we can resolve future conflicts
+    #     allocate()
+    #     calculate_timestamp()
 
