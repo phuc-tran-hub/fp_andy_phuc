@@ -1,0 +1,6 @@
+#!/usr/bin/env python
+
+import rospy
+from fp_andy_phuc.cbs import *
+
+perform_cbs()
