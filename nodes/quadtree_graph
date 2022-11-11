@@ -24,20 +24,84 @@ class Quadtree():
         #     self.name+DEFAULT_WAYPOINTS_TOPIC, String, queue_size=1)
         self.map = np.array(Image.open(
             "/root/catkin_ws/src/fp_andy_phuc/nodes/map.png", mode="r"))
-        self.map = self.map[:, :, 0]/255
+        self.map = np.fliplr(np.transpose(self.map[:, :, 0]/255))
 
         self.space_size = 64
         self.area = {"left": 0, "right": self.space_size,
                      "bottom": 0, "top": self.space_size}
 
-        quadtree = self.subdivide(self.area, 3, self.map)
-        rospy.loginfo(quadtree)
+        graph, squares = self.generate_graph(self.area, self.map, 6)
+        string = ""
+        sep = 0.05
+        # for j in list(graph.nodes(data=True)):
+        #     i = j[1]["square"]
+        #     string += "\n"+str(i["left"]+sep) + "<x<"+str(i["right"]-sep) + \
+        #         "\left\{"+str(i["bottom"]+sep)+"<y<" + \
+        #         str(i["top"]-sep)+"\\right\}"
+        for i in list(graph.edges(data=True)):
+            sq1 = squares[i[0]]
+            sq2 = squares[i[1]]
+            center1 = np.array([float(sq1["left"]+sq1["right"]),
+                               float(sq1["bottom"]+sq1["top"])])/2
+            center2 = np.array([float(sq2["left"]+sq2["right"]),
+                               float(sq2["bottom"]+sq2["top"])])/2
+            string += "\n"+"\left("+str(center1[0])+"+\left("+str(center2[0])+"-"+str(center1[0])+"\\right)t," + \
+                str(center1[1])+"+\left("+str(center2[1]) + \
+                "-"+str(center1[1])+"\\right)t\\right)"
+        rospy.loginfo(string)
+
+    def generate_graph(self, area, map, iterations):
+        """Generate a graph from a map."""
+
+        # Generate a graph
+        graph = nx.Graph()
+
+        # Generate a list of free squares
+        free_squares = self.subdivide(area, iterations, map, map)
+
+        # Add nodes to the graph
+        for i in range(len(free_squares)):
+            graph.add_node(
+                i, square=free_squares[i])
+
+        # Add edges to the graph
+        for i in range(len(free_squares)):
+            for j in range(i+1, len(free_squares)):
+                if self.is_adjacent(free_squares[i], free_squares[j]):
+                    graph.add_edge(i, j)
+
+        return graph, free_squares
+
+    def is_adjacent(self, square1, square2):
+        if square1["left"] == square2["right"] or square1["right"] == square2["left"]:
+            if square1["top"] > square2["bottom"] and square1["bottom"] < square2["top"]:
+                return True
+        elif square1["top"] == square2["bottom"] or square1["bottom"] == square2["top"]:
+            if square1["right"] > square2["left"] and square1["left"] < square2["right"]:
+                return True
 
     # Subdivide quadtree
-    def subdivide(self, square, iterations, map, adj_squares=[]):
+    def subdivide_free_square(self, square, iterations):
+        squares = []
+        if iterations > 0:
+            for i in range(2):
+                for j in range(2):
+                    left = square["left"] + i * \
+                        (square["right"] - square["left"]) / 2
+                    right = square["left"] + \
+                        (i + 1) * (square["right"] - square["left"]) / 2
+                    bottom = square["bottom"] + j * \
+                        (square["top"] - square["bottom"]) / 2
+                    top = square["bottom"] + \
+                        (j + 1) * (square["top"] - square["bottom"]) / 2
+                    squares.extend(self.subdivide_free_square(
+                        {"left": left, "right": right, "bottom": bottom, "top": top}, iterations - 1))
+        return squares
+
+    def subdivide(self, square, iterations, map, sub_map, adj_squares=[]):
 
         # If the square does not have any obstacles, return it
-        if np.all(map):
+        if np.all(sub_map):
             return [square]
         elif iterations > 0:
             squares = []
@@ -55,7 +119,7 @@ class Quadtree():
                     sub_map = map[int(left):int(right), int(bottom):int(top)]
 
                     new_squares = self.subdivide(
-                        {"left": left, "right": right, "bottom": bottom, "top": top}, iterations - 1, sub_map, adj_squares=adj_squares)
+                        {"left": left, "right": right, "bottom": bottom, "top": top}, iterations - 1, map, sub_map, adj_squares=adj_squares)
                     squares.extend(new_squares)
             return squares
         else:
