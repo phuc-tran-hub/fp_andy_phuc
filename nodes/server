@@ -3,4 +3,25 @@
 import rospy
 from fp_andy_phuc.cbs import *
 
-perform_cbs()
+class Server: 
+    def __init__(self):
+        return 
+
+    def spin(self):
+        while not rospy.is_shutdown():
+            rospy.sleep(2)
+
+
+def main():
+    rospy.init_node("server")
+    server_bot = Server()
+
+    try: 
+        perform_cbs()
+        server_bot.spin()
+    except rospy.ROSInterruptException:
+        rospy.logerr("ROS Node interrupted.")
+
+if __name__ == "__main__":
+    """Run the server."""
+    main()
