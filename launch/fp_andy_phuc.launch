@@ -12,12 +12,6 @@
     <param name="use_sim_time" value="$(arg use_sim_time)"/>
 
     <node pkg="fp_andy_phuc" type="server" name="server" output="screen"/>
-    <!-- <node pkg="fp_andy_phuc" type="cbs.py" name="cbs" output="screen"/> -->
-    <!-- <node pkg="fp_andy_phuc" type="auctioneer" name="auctioneer" output="screen"/>
-    <node pkg="fp_andy_phuc" type="agent" name="robot_0" output="screen"/>
-    <node pkg="fp_andy_phuc" type="agent" name="robot_1" output="screen"/>
-    <node pkg="fp_andy_phuc" type="agent" name="robot_2" output="screen"/>
-    <node pkg="fp_andy_phuc" type="agent" name="robot_3" output="screen"/> -->
 
     <!-- conflict based search parameters-->
     <rosparam param="robot_linear_vel">0.2</rosparam>
