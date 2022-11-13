@@ -184,10 +184,11 @@ def add_constraint(constraint, shorter_robot, constraint_list):
     constraint_list.append([shorter_robot, constraint])
     return constraint_list
 
-def find_node_conflict(robot1, robot2, task_path_dict, time_stamp_dict, constraint_list):
+def find_node_conflict(robot1, robot2, task_path_dict, time_stamp_dict):
     """Find the number of  conflict between two robots as well as storing the constraint"""
     conflict_threshold = rospy.get_param("conflict_threshold")
-
+    constraint_list = []
+    
     path1 = task_path_dict[robot1]
     path2 = task_path_dict[robot2]
 
@@ -226,20 +227,22 @@ def find_node_conflict(robot1, robot2, task_path_dict, time_stamp_dict, constrai
     return constraint_list
 
 
-def resolve_conflict(robot_names, task_path_dict, time_stamp_dict, constraint_list):
+def resolve_conflict(robot_names, task_path_dict, time_stamp_dict):
     """Resolve conflict between random pairings of robots."""
     hashset = set(robot_names)
     constraint_number = 0
+    current_layer_constraints = [] 
 
     while hashset:
         # Perform random pairing
         robot1 = hashset.pop()
         robot2 = hashset.pop()
-        constraint_list = find_node_conflict(robot1, robot2, task_path_dict, time_stamp_dict, constraint_list)
+        constraint_list = find_node_conflict(robot1, robot2, task_path_dict, time_stamp_dict)
+        current_layer_constraints += constraint_list
         if constraint_list:
             constraint_number += 1
 
-    return constraint_list, constraint_number
+    return current_layer_constraints, constraint_number
 
 
 def perform_cbs():
@@ -277,15 +280,24 @@ def perform_cbs():
     task_allocation_dict, task_path_dict =  allocate(goal_names, robot_names, location_graph, [])
     time_stamp_dict = calculate_timestamp(task_path_dict, location_graph, robot_linear_vel, robot_angular_vel)
 
+    # holds all the constraints
+    large_constraint_list = [] 
+
     # If a conflict occurs, add that constraint to the constraint list, allocate again, and find the timestamp dictionary
     while True:
         constraint_number = 0
-        constraint_list, constraint_number = resolve_conflict(robot_names, task_path_dict, time_stamp_dict, constraint_list)
+        
+        # For the current layer of tree hiearchy, find the constraint list, the number of constraints
+        constraint_list, constraint_number = resolve_conflict(robot_names, task_path_dict, time_stamp_dict)
+        large_constraint_list += constraint_list
+
+        rospy.loginfo(large_constraint_list)
         rospy.loginfo(constraint_number)
-        rospy.loginfo(constraint_list)
+        # Let's reallocate to find the new paths
         if constraint_number > 0:            
-            task_path_dict = reallocation(constraint_list, robot_names, location_graph, task_allocation_dict, task_path_dict)
+            task_path_dict = reallocation(large_constraint_list, robot_names, location_graph, task_allocation_dict, task_path_dict)
             time_stamp_dict = calculate_timestamp(task_path_dict, location_graph, robot_linear_vel, robot_angular_vel)
+        # Eventually, the constraint number will become zero with the given path and timestamps
         else:
             break
 
