@@ -5,6 +5,8 @@ from fp_andy_phuc.cbs import *
 
 class Server: 
     def __init__(self):
+        self.task_allocation_dict = {}
+        self.task_path_dict = {}
         return 
 
     def spin(self):
