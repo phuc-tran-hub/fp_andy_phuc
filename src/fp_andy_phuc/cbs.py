@@ -21,7 +21,7 @@ def include_robot(robot_locations, goal_locations):
     i = 0
     # For each of the robot, create a new node
     while i < len(robot_locations):
-        robot_node_i = "/tb3_" + str(i)
+        robot_node_i = "tb3_" + str(i)
         x = robot_locations[i][0]
         y = robot_locations[i][1]
         locations.append((x, y))
@@ -31,7 +31,7 @@ def include_robot(robot_locations, goal_locations):
     i = 0
     # For each of the goal, create a new node
     while i < len(goal_locations):
-        goal_node_i = "/goal_" + str(i)
+        goal_node_i = "goal_" + str(i)
         x = goal_locations[i][0]
         y = goal_locations[i][1]
         locations.append((x, y))
@@ -60,7 +60,7 @@ def construct_graph(spanning_tree, location_graph, num_node, threshold, grid_x, 
         for node_j in spanning_tree.nodes:
             if node_i != node_j:
                 # don't link the robots together (avoid collisions)
-                if node_i[:4] == "/tb3" and node_j[:4] == "/tb3":
+                if node_i[:4] == "tb3" and node_j[:4] == "tb3":
                     continue
                 else:
                     # compute the distance between the two nodes
@@ -302,4 +302,4 @@ def perform_cbs():
             break
 
     rospy.loginfo("finished")
-    return task_allocation_dict, task_path_dict
+    return task_allocation_dict, task_path_dict, location_graph
