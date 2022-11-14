@@ -1,0 +1,53 @@
+#!/usr/bin/env python
+
+# Name: Phuc Tran and Andy Kotz
+# Task: Server to publish the task allocation and the task path dictionaries
+
+import json
+import rospy
+from fp_andy_phuc.cbs import *
+
+# Message Libraries
+from std_msgs.msg import String
+
+ALLOCATION_DICT_PARAM = "allocation_dict"
+TASK_PATH_DICT_PARAM = "task_path_dict"
+
+class Server: 
+    def __init__(self):
+        """Constructor."""
+        # Performed CBS to receive the task allocation and the task dictionary
+        self.task_allocation_dict, self.task_path_dict = perform_cbs()
+
+        self._allocation_pub = rospy.Publisher(ALLOCATION_DICT_PARAM, String, queue_size = 1)
+        self._task_path_dict_pub = rospy.Publisher(TASK_PATH_DICT_PARAM, String, queue_size = 1)
+
+    def publish(self):
+        """Publish the task allocation dictionary for the robots and the paths it will take."""
+        self._allocation_pub.publish(String(json.dumps(self.task_allocation_dict)))
+        self._task_path_dict_pub.publish(String(json.dumps(self.task_path_dict)))
+        
+    def spin(self):
+        """Spin the server."""    
+        while not rospy.is_shutdown():
+            rospy.sleep(2)
+
+            # if the dictionaries are completed, let's push them
+            if self.task_allocation_dict and self.task_path_dict:
+                self.publish()
+
+def main():
+    rospy.init_node("server")
+
+    rospy.sleep(2)
+    
+    server_bot = Server()
+
+    try: 
+        server_bot.spin()
+    except rospy.ROSInterruptException:
+        rospy.logerr("ROS Node interrupted.")
+
+if __name__ == "__main__":
+    """Run the server."""
+    main()
