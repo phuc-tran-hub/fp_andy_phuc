@@ -7,7 +7,7 @@ from PIL import Image
 import numpy as np
 
 
-def image_to_graph(image_name="/root/catkin_ws/src/fp_andy_phuc/nodes/map.png", space_size=64, quadtree_depth=6):
+def image_to_graph(image_name="/root/catkin_ws/src/fp_andy_phuc/nodes/map.png", space_size=64, quadtree_depth=5):
 
     map = np.array(Image.open(image_name, mode="r"))
     map = np.fliplr(np.transpose(map[:, :, 0]/255))
@@ -15,25 +15,30 @@ def image_to_graph(image_name="/root/catkin_ws/src/fp_andy_phuc/nodes/map.png", 
     area = {"left": 0, "right": space_size,
             "bottom": 0, "top": space_size}
 
-    graph, squares = generate_graph(area, map, quadtree_depth)
-    squares_string = ""
-    edges_string = ""
-    sep = 0.05
-    for j in list(graph.nodes(data=True)):
-        i = j[1]["square"]
-        squares_string += "\n"+str(i["left"]+sep) + "<x<"+str(i["right"]-sep) + \
-            "\left\{"+str(i["bottom"]+sep)+"<y<" + \
-            str(i["top"]-sep)+"\\right\}"
-    for i in list(graph.edges(data=True)):
-        sq1 = squares[i[0]]
-        sq2 = squares[i[1]]
-        center1 = np.array([float(sq1["left"]+sq1["right"]),
-                           float(sq1["bottom"]+sq1["top"])])/2
-        center2 = np.array([float(sq2["left"]+sq2["right"]),
-                           float(sq2["bottom"]+sq2["top"])])/2
-        edges_string += "\n"+"\left("+str(center1[0])+"+\left("+str(center2[0])+"-"+str(center1[0])+"\\right)t," + \
-            str(center1[1])+"+\left("+str(center2[1]) + \
-            "-"+str(center1[1])+"\\right)t\\right)"
+    graphs = []
+    for i in range(quadtree_depth):
+        graph, squares = generate_graph(area, map, quadtree_depth)
+        graphs.append(graph)
+
+    for graph in graphs:
+        squares_string = ""
+        edges_string = ""
+        sep = 0.05
+        for j in list(graph.nodes(data=True)):
+            i = j[1]["square"]
+            squares_string += "\n"+str(i["left"]+sep) + "<x<"+str(i["right"]-sep) + \
+                "\left\{"+str(i["bottom"]+sep)+"<y<" + \
+                str(i["top"]-sep)+"\\right\}"
+        for i in list(graph.edges(data=True)):
+            sq1 = squares[i[0]]
+            sq2 = squares[i[1]]
+            center1 = np.array([float(sq1["left"]+sq1["right"]),
+                                float(sq1["bottom"]+sq1["top"])])/2
+            center2 = np.array([float(sq2["left"]+sq2["right"]),
+                                float(sq2["bottom"]+sq2["top"])])/2
+            edges_string += "\n"+"\left("+str(center1[0])+"+\left("+str(center2[0])+"-"+str(center1[0])+"\\right)t," + \
+                str(center1[1])+"+\left("+str(center2[1]) + \
+                "-"+str(center1[1])+"\\right)t\\right)"
 
     return graph, squares_string, edges_string
 
@@ -73,10 +78,10 @@ def is_adjacent(square1, square2):
             return True
 
 
-def subdivide(self, square, iterations, map, sub_map):
+def subdivide(square, iterations, map, sub_map):
 
     # If the square does not have any obstacles, return it
-    if np.all(sub_map):
+    if np.all(sub_map) and iterations == 0:
         return [square]
     elif iterations > 0:
         squares = []
@@ -93,7 +98,7 @@ def subdivide(self, square, iterations, map, sub_map):
 
                 sub_map = map[int(left):int(right), int(bottom):int(top)]
 
-                new_squares = self.subdivide(
+                new_squares = subdivide(
                     {"left": left, "right": right, "bottom": bottom, "top": top}, iterations - 1, map, sub_map)
                 squares.extend(new_squares)
         return squares
