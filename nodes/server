@@ -20,9 +20,8 @@ class Server:
     def __init__(self):
         """Constructor."""
         # Performed CBS to receive the task allocation and the task dictionary
-        self.task_allocation_dict, self.task_path_dict, self.location_graph = perform_cbs()
+        self.task_allocation_dict, self.task_path_dict = perform_cbs()
 
-        self._graph_pub = rospy.Publisher(GRAPH_PARAM, String, queue_size = 1)
         self._allocation_pub = rospy.Publisher(ALLOCATION_DICT_PARAM, String, queue_size = 1)
         self._task_path_dict_pub = rospy.Publisher(TASK_PATH_DICT_PARAM, String, queue_size = 1)
 
@@ -31,20 +30,13 @@ class Server:
         self._allocation_pub.publish(String(json.dumps(self.task_allocation_dict)))
         self._task_path_dict_pub.publish(String(json.dumps(self.task_path_dict)))
 
-        if self.location_graph:
-            # Publish the string representation of the location graph
-            location_data = nx.readwrite.json_graph.node_link_data(self.location_graph)
-            location_graph_str = json.dumps(location_data)
-            self._graph_pub.publish(String(location_graph_str))
-
-
     def spin(self):
         """Spin the server."""    
         while not rospy.is_shutdown():
             rospy.sleep(2)
 
             # if the dictionaries are completed, let's push them
-            if self.location_graph and self.task_allocation_dict and self.task_path_dict:
+            if self.task_allocation_dict and self.task_path_dict:
                 self.publish()
 
 def main():

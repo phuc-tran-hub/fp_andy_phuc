@@ -8,7 +8,6 @@ import rospy
 import networkx as nx
 import math
 import random
-import copy
 import matplotlib.pyplot as plt 
 
 # GOAL: Create a connected graph of robots, goals, and possible location nodes
@@ -245,6 +244,21 @@ def resolve_conflict(robot_names, task_path_dict, time_stamp_dict):
     return current_layer_constraints, constraint_number
 
 
+def convert_path_to_locations(location_graph, task_path_dict):
+    """Converts each path to location coordinates."""
+
+    # Iterate through each robot, find the node path lists and convert them to coordinates
+    for robot in task_path_dict:
+        robot_node_list = task_path_dict[robot]
+        robot_location_list = []
+        for node in robot_node_list:
+            node_location = location_graph.nodes[node]["location"]
+            robot_location_list.append(node_location)
+        
+        # Reupdate the path dictionary
+        task_path_dict[robot] = robot_location_list
+    return task_path_dict
+
 def perform_cbs():
     """A blackbox to perform conflict-based search"""
     robot_linear_vel = rospy.get_param("robot_linear_vel") # m/s
@@ -299,7 +313,8 @@ def perform_cbs():
             time_stamp_dict = calculate_timestamp(task_path_dict, location_graph, robot_linear_vel, robot_angular_vel)
         # Eventually, the constraint number will become zero with the given path and timestamps
         else:
+            task_path_dict = convert_path_to_locations(location_graph, task_path_dict)
             break
 
     rospy.loginfo("finished")
-    return task_allocation_dict, task_path_dict, location_graph
+    return task_allocation_dict, task_path_dict

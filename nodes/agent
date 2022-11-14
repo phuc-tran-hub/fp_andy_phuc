@@ -12,7 +12,6 @@ import networkx as nx
 from std_msgs.msg import String
 
 TASK_PATH_DICT_PARAM = "task_path_dict"
-GRAPH_PARAM = "graph"
 
 class Agent: 
     def __init__(self):
@@ -24,18 +23,12 @@ class Agent:
 
         # Setting up subscribers
         rospy.Subscriber(TASK_PATH_DICT_PARAM, String, self._allocation_dict_callback, queue_size=1)
-        rospy.Subscriber(GRAPH_PARAM, String, self._graph_callback, queue_size = 1)
-
-    def _graph_callback(self, msg):
-        """Handles the message by reconstructing the graph."""
-        graph_tree_new_data = json.loads(msg.data)
-        self.location_graph = nx.readwrite.json_graph.node_link_graph(graph_tree_new_data)
-        self.steiner_node_list = list(self.location_graph.nodes)
                 
     def _allocation_dict_callback(self, msg):
         """Saving the list of nodes to travel to."""
         task_path_dict = json.loads(msg.data)
         self.task_path = task_path_dict[self.name[1:]][1:]
+        rospy.loginfo(self.task_path)
     
     def spin(self):
         while not rospy.is_shutdown():
