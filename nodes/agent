@@ -116,19 +116,20 @@ class Agent:
         """Travel to each node."""
         if self.task_path and self.task_flag == False:
             for task in self.task_path:
+                odom_frame = self.name.lstrip('/') + "/odom"        
+                robot_frame = self.name.lstrip('/') + "/base_link"    
+
                 # Create the PointStamped message
                 task_point = PointStamped()
-                task_point.header.frame_id = "world" #task_to_perform
+                task_point.header.frame_id = odom_frame
 
                 task_point.point.x = task[0]
-                task_point.point.y = task[1]
-
-                robot_frame = self.name.lstrip('/') + "/base_link"        
+                task_point.point.y = task[1]    
                 
                 while not rospy.is_shutdown():
                     try:
                         task_point.header.stamp = rospy.Time()
-                        self.t.waitForTransform("world", robot_frame, task_point.header.stamp, rospy.Duration(4.0))
+                        self.t.waitForTransform(odom_frame, robot_frame, task_point.header.stamp, rospy.Duration(4.0))
                         transformed_point = self.t.transformPoint(robot_frame, task_point)
                         break
                     except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):

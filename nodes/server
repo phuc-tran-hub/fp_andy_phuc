@@ -23,11 +23,6 @@ class Server:
     def __init__(self):
         """Constructor."""
         graph, squares_string, edges_string = image_to_graph()
-        # rospy.loginfo(graph.nodes())
-        # rospy.loginfo("-----------------")
-        # rospy.loginfo(squares_string)
-        # rospy.loginfo("-----------------")
-        # rospy.loginfo(edges_string)
         # Performed CBS to receive the task allocation and the task dictionary
         self.task_allocation_dict, self.task_path_dict = perform_cbs(graph)
 
