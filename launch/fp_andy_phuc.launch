@@ -9,9 +9,16 @@
        Note: set to false for deploying to a real robot.
   -->
     <arg name="use_sim_time" default="true"/>
-    <param name="use_sim_time" value="$(arg use_sim_time)"/>
 
     <node pkg="fp_andy_phuc" type="server" name="server" output="screen"/>
+    <node pkg="fp_andy_phuc" type="tfbroadcaster" name="tfbroadcaster" output="screen"/>
+    <node pkg="fp_andy_phuc" type="agent" name="tb3_0" output="screen"/>
+    <node pkg="fp_andy_phuc" type="agent" name="tb3_1" output="screen"/>
+    <node pkg="fp_andy_phuc" type="agent" name="tb3_2" output="screen"/>
+    <node pkg="fp_andy_phuc" type="agent" name="tb3_3" output="screen"/>
+
+    <!-- TF broadcaster parameters-->
+    <rosparam param="num_robots">4</rosparam>
 
     <!-- conflict based search parameters-->
     <rosparam param="robot_linear_vel">0.2</rosparam>

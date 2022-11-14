@@ -1,0 +1,60 @@
+#!/usr/bin/env python
+
+# Name: Phuc Tran
+# Class: COSC 69.13
+# Professor: Alberto Quattrini Li
+# Task: Broadcast each robot's odom frame to the world's frame
+
+# Python libraries
+import rospy
+import tf 
+
+class tfBroadcaster:
+    def __init__(self):
+        """Constructor"""
+        self.robot_locations = rospy.get_param("robot_locations")
+        robot_str = "/tb3_"
+        self.robot_locations_dict = {}
+
+        # Store the locations into a dictionary
+        for i in range(len(self.robot_locations)):
+            param_str = robot_str + str(i)
+            self.robot_locations_dict[param_str] = self.robot_locations[i]
+
+    def broadcast(self):
+        """Send the transformation between the robot's original odom frame and the world."""
+        br = tf.TransformBroadcaster()
+        for name in self.robot_locations_dict:
+            rospy.sleep(1)
+            positions = self.robot_locations_dict[name]
+            frame_name = name + "/odom"
+            br.sendTransform((positions[0], positions[1], 0),
+                            tf.transformations.quaternion_from_euler(0, 0, 0),
+                            rospy.Time.now(),
+                            frame_name,
+                            "world")
+
+    def spin(self):
+        """Spin the broadcaster."""
+        while not rospy.is_shutdown():
+            if self.robot_locations_dict:
+                self.broadcast()
+
+
+def main():
+
+    # Initialization of node
+    rospy.init_node("tfbroadcaster")
+
+    # Initialization of the class for the simple motion
+    tf_broadcaster_bot = tfBroadcaster()
+    
+    try:
+        tf_broadcaster_bot.spin()
+    except rospy.ROSInterruptException:
+        rospy.logerr("ROS node interrupted.")
+
+if __name__ == "__main__":
+    """Run the auctioneer."""
+    main()
+    
