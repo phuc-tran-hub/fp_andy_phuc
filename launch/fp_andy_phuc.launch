@@ -31,5 +31,5 @@
     <rosparam param="robot_names">["robot_0", "robot_1", "robot_2", "robot_3"]</rosparam>
     <rosparam param="goal_names">["goal_0", "goal_1", "goal_2", "goal_3"]</rosparam>
     <rosparam param="robot_locations">[[10.5, 10.5], [20.5, 20.5], [5.5, 45.5], [50.5,40.5]]</rosparam>
-    <rosparam param="goal_locations">[[25.5, 35.5], [50.5,20.5], [10.5, 22.5], [10.5, 30.5]]</rosparam>
+    <rosparam param="goal_locations">[[25.5, 20.5], [25.5,10.5], [10.5, 22.5], [10.5, 30.5]]</rosparam>
 </launch>
