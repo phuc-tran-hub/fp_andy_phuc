@@ -11,9 +11,9 @@ import tf
 
 class tfBroadcaster:
     def __init__(self):
-        """Constructor"""
+        """Constructor."""
         self.robot_locations = rospy.get_param("robot_locations")
-        robot_str = "/tb3_"
+        robot_str = "/robot_"
         self.robot_locations_dict = {}
 
         # Store the locations into a dictionary

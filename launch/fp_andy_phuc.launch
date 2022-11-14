@@ -12,10 +12,10 @@
 
     <node pkg="fp_andy_phuc" type="server" name="server" output="screen"/>
     <node pkg="fp_andy_phuc" type="tfbroadcaster" name="tfbroadcaster" output="screen"/>
-    <node pkg="fp_andy_phuc" type="agent" name="tb3_0" output="screen"/>
-    <node pkg="fp_andy_phuc" type="agent" name="tb3_1" output="screen"/>
-    <node pkg="fp_andy_phuc" type="agent" name="tb3_2" output="screen"/>
-    <node pkg="fp_andy_phuc" type="agent" name="tb3_3" output="screen"/>
+    <node pkg="fp_andy_phuc" type="agent" name="robot_0" output="screen"/>
+    <node pkg="fp_andy_phuc" type="agent" name="robot_1" output="screen"/>
+    <node pkg="fp_andy_phuc" type="agent" name="robot_2" output="screen"/>
+    <node pkg="fp_andy_phuc" type="agent" name="robot_3" output="screen"/>
 
     <!-- TF broadcaster parameters-->
     <rosparam param="num_robots">4</rosparam>
@@ -28,8 +28,8 @@
     <rosparam param="grid_x">10</rosparam>
     <rosparam param="grid_y">10</rosparam>
     <rosparam param="conflict_threshold">20</rosparam>
-    <rosparam param="robot_names">["tb3_0", "tb3_1", "tb3_2", "tb3_3"]</rosparam>
+    <rosparam param="robot_names">["robot_0", "robot_1", "robot_2", "robot_3"]</rosparam>
     <rosparam param="goal_names">["goal_0", "goal_1", "goal_2", "goal_3"]</rosparam>
-    <rosparam param="robot_locations">[[0,2], [0,4], [0,6], [0,8]]</rosparam>
-    <rosparam param="goal_locations">[[6,4], [2,2], [9,1], [2, 8]]</rosparam>
+    <rosparam param="robot_locations">[[10.5, 10.5], [20.5, 20.5], [5.5, 45.5], [50.5,40.5]]</rosparam>
+    <rosparam param="goal_locations">[[25.5, 35.5], [50.5,20.5], [10.5, 22.5], [10.5, 30.5]]</rosparam>
 </launch>

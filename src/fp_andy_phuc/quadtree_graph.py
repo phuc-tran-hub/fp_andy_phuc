@@ -137,8 +137,4 @@ def subdivide(square, iterations, map, sub_map, index):
             return None, None
     else:
         return None, None
-
-
-if __name__ == "__main__":
-    """Run the main function."""
-    print(image_to_graph())
+    
