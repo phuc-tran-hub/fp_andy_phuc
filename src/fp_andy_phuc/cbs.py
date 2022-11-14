@@ -8,7 +8,6 @@ import rospy
 import networkx as nx
 import math
 import random
-import copy
 import matplotlib.pyplot as plt 
 
 # GOAL: Create a connected graph of robots, goals, and possible location nodes
@@ -21,7 +20,7 @@ def include_robot(robot_locations, goal_locations):
     i = 0
     # For each of the robot, create a new node
     while i < len(robot_locations):
-        robot_node_i = "/tb3_" + str(i)
+        robot_node_i = "tb3_" + str(i)
         x = robot_locations[i][0]
         y = robot_locations[i][1]
         locations.append((x, y))
@@ -31,7 +30,7 @@ def include_robot(robot_locations, goal_locations):
     i = 0
     # For each of the goal, create a new node
     while i < len(goal_locations):
-        goal_node_i = "/goal_" + str(i)
+        goal_node_i = "goal_" + str(i)
         x = goal_locations[i][0]
         y = goal_locations[i][1]
         locations.append((x, y))
@@ -60,7 +59,7 @@ def construct_graph(spanning_tree, location_graph, num_node, threshold, grid_x, 
         for node_j in spanning_tree.nodes:
             if node_i != node_j:
                 # don't link the robots together (avoid collisions)
-                if node_i[:4] == "/tb3" and node_j[:4] == "/tb3":
+                if node_i[:4] == "tb3" and node_j[:4] == "tb3":
                     continue
                 else:
                     # compute the distance between the two nodes
@@ -245,6 +244,21 @@ def resolve_conflict(robot_names, task_path_dict, time_stamp_dict):
     return current_layer_constraints, constraint_number
 
 
+def convert_path_to_locations(location_graph, task_path_dict):
+    """Converts each path to location coordinates."""
+
+    # Iterate through each robot, find the node path lists and convert them to coordinates
+    for robot in task_path_dict:
+        robot_node_list = task_path_dict[robot]
+        robot_location_list = []
+        for node in robot_node_list:
+            node_location = location_graph.nodes[node]["location"]
+            robot_location_list.append(node_location)
+        
+        # Reupdate the path dictionary
+        task_path_dict[robot] = robot_location_list
+    return task_path_dict
+
 def perform_cbs():
     """A blackbox to perform conflict-based search"""
     robot_linear_vel = rospy.get_param("robot_linear_vel") # m/s
@@ -299,6 +313,7 @@ def perform_cbs():
             time_stamp_dict = calculate_timestamp(task_path_dict, location_graph, robot_linear_vel, robot_angular_vel)
         # Eventually, the constraint number will become zero with the given path and timestamps
         else:
+            task_path_dict = convert_path_to_locations(location_graph, task_path_dict)
             break
 
     rospy.loginfo("finished")

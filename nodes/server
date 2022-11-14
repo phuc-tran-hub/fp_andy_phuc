@@ -3,7 +3,9 @@
 # Name: Phuc Tran and Andy Kotz
 # Task: Server to publish the task allocation and the task path dictionaries
 
+# Python Libraries
 import json
+import networkx as nx
 import rospy
 from fp_andy_phuc.cbs import *
 from fp_andy_phuc.quadtree_graph import image_to_graph
@@ -13,6 +15,7 @@ from std_msgs.msg import String
 
 ALLOCATION_DICT_PARAM = "allocation_dict"
 TASK_PATH_DICT_PARAM = "task_path_dict"
+GRAPH_PARAM = "graph"
 
 
 class Server:
@@ -28,7 +31,7 @@ class Server:
             TASK_PATH_DICT_PARAM, String, queue_size=1)
 
     def publish(self):
-        """Publish the task allocation dictionary for the robots and the paths it will take."""
+        """Publish the graph, the task allocation dictionary for the robots, and the paths it will take."""
         self._allocation_pub.publish(
             String(json.dumps(self.task_allocation_dict)))
         self._task_path_dict_pub.publish(
