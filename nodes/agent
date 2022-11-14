@@ -7,32 +7,159 @@
 import rospy
 import json
 import networkx as nx 
+import math 
+import tf 
 
 # Message Libraries
 from std_msgs.msg import String
+from geometry_msgs.msg import Twist, PointStamped
 
 TASK_PATH_DICT_PARAM = "task_path_dict"
+DEFAULT_CMD_VEL_TOPIC = "/cmd_vel"
+FREQUENCY = 10 # Hz
 
 class Agent: 
     def __init__(self):
         """Constructor."""
         self.name = rospy.get_name()
         self.task_path = []
-        self.location_graph = nx.Graph()
-        self.steiner_node_list = []
+        self.task_flag = False 
+
+        self.linear_velocity = rospy.get_param("robot_linear_vel") # m/s 
+        self.angular_velocity = rospy.get_param("robot_angular_vel") # rad/s
 
         # Setting up subscribers
         rospy.Subscriber(TASK_PATH_DICT_PARAM, String, self._allocation_dict_callback, queue_size=1)
-                
+
+        # Setting up publishers
+        cmd_pub_str = self.name + DEFAULT_CMD_VEL_TOPIC
+        self._cmd_pub = rospy.Publisher(cmd_pub_str, Twist, queue_size = 1)
+        
+        # Setting up TransformListener
+        self.t = tf.TransformListener()
+
     def _allocation_dict_callback(self, msg):
         """Saving the list of nodes to travel to."""
         task_path_dict = json.loads(msg.data)
         self.task_path = task_path_dict[self.name[1:]][1:]
         rospy.loginfo(self.task_path)
-    
+
+    def stop(self):
+        """Stop the robot."""
+        twist_msg = Twist()
+        self._cmd_pub.publish(twist_msg)
+
+    def rotate_in_place(self, theta):
+        """
+        Rotate in place the robot of rotation_angle (rad) based on fixed velocity.
+        Assumption: Clockwise rotation rotation.
+        """
+        twist_msg = Twist()
+        twist_msg.angular.z = self.angular_velocity
+
+        # if theta's negative, make sure the angular velocity is negative
+        if theta < 0:
+            twist_msg.angular.z = self.angular_velocity * -1
+        
+        duration = theta / twist_msg.angular.z
+        start_time = rospy.get_rostime()
+
+        # Rate at which to operate the while loop.
+        rate = rospy.Rate(FREQUENCY)
+
+        while not rospy.is_shutdown():
+            # Check if done
+            if rospy.get_rostime() - start_time >= rospy.Duration(abs(duration)):
+                break
+                
+            # Publish message.
+            self._cmd_pub.publish(twist_msg)
+            
+            # Sleep to keep the set frequency.
+            rate.sleep()
+
+        # Rotated the required angle, stop.
+        rospy.loginfo("rotate done")
+        self.stop()
+
+    def move_forward(self, distance):
+        """Function to move_forward for a given distance."""
+        # Rate at which to operate the while loop.
+        rate = rospy.Rate(5)
+
+        # Setting velocities. 
+        twist_msg = Twist()
+        twist_msg.linear.x = self.linear_velocity
+        start_time = rospy.get_rostime()
+        duration = rospy.Duration(distance/twist_msg.linear.x)
+
+        # Rate at which to operate the while loop.
+        rate = rospy.Rate(FREQUENCY)
+
+        # Loop.
+        while not rospy.is_shutdown():
+            # Check if traveled of given distance based on time.
+            if rospy.get_rostime() - start_time >= duration:
+                break
+
+            # Publish message.
+            self._cmd_pub.publish(twist_msg)
+
+            # Sleep to keep the set publishing frequency.
+            rate.sleep()
+
+        # Traveled the required distance, stop.
+        rospy.loginfo("linear done")
+        self.stop()
+
+    def travel_to_node(self):
+        """Travel to each node."""
+        if self.task_path and self.task_flag == False:
+            for task in self.task_path:
+                odom_frame = self.name.lstrip('/') + "/odom"        
+                robot_frame = self.name.lstrip('/') + "/base_link"    
+
+                # Create the PointStamped message
+                task_point = PointStamped()
+                task_point.header.frame_id = odom_frame
+
+                task_point.point.x = task[0]
+                task_point.point.y = task[1]    
+                
+                while not rospy.is_shutdown():
+                    try:
+                        task_point.header.stamp = rospy.Time()
+                        self.t.waitForTransform(odom_frame, robot_frame, task_point.header.stamp, rospy.Duration(4.0))
+                        transformed_point = self.t.transformPoint(robot_frame, task_point)
+                        break
+                    except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                        rospy.sleep(2)
+                        rospy.loginfo("transform point try again")
+                        continue
+
+                task_transformed_x = transformed_point.point.x
+                task_transformed_y = transformed_point.point.y
+                angle = math.atan2(task_transformed_y, task_transformed_x)
+                distance = math.sqrt(task_transformed_x ** 2 + task_transformed_y ** 2)
+
+                # data log
+                rospy.loginfo(self.name)
+                rospy.loginfo(task_point)
+                rospy.loginfo(angle)
+                rospy.loginfo(distance)
+                rospy.loginfo("-----")
+
+                self.rotate_in_place(angle)
+                self.move_forward(distance)
+
+        self.stop()
+        self.task_flag = True
+
     def spin(self):
         while not rospy.is_shutdown():
             rospy.sleep(2)
+            if self.task_path:
+                self.travel_to_node()
     
 def main():
 

@@ -6,6 +6,7 @@
 # Python Libraries
 import json
 import networkx as nx
+import numpy as np
 import rospy
 from fp_andy_phuc.cbs import *
 from fp_andy_phuc.quadtree_graph import image_to_graph
@@ -22,12 +23,9 @@ class Server:
     def __init__(self):
         """Constructor."""
         graph, squares_string, edges_string = image_to_graph()
-        rospy.loginfo("-----------------")
-        rospy.loginfo(squares_string)
-        rospy.loginfo("-----------------")
         rospy.loginfo(edges_string)
         # Performed CBS to receive the task allocation and the task dictionary
-        self.task_allocation_dict, self.task_path_dict = perform_cbs()
+        self.task_allocation_dict, self.task_path_dict = perform_cbs(graph)
 
         self._allocation_pub = rospy.Publisher(
             ALLOCATION_DICT_PARAM, String, queue_size=1)
@@ -38,6 +36,9 @@ class Server:
         """Publish the graph, the task allocation dictionary for the robots, and the paths it will take."""
         self._allocation_pub.publish(
             String(json.dumps(self.task_allocation_dict)))
+
+        rospy.loginfo(self.task_path_dict)
+
         self._task_path_dict_pub.publish(
             String(json.dumps(self.task_path_dict)))
 

@@ -3,80 +3,52 @@
 # Name: Phuc Tran and Andy Kotz
 # Task: Machine Learning Implementation of Conflict Based Search
 
+from operator import index
 import rospy 
-
+import numpy as np
 import networkx as nx
 import math
+import json
 import random
+
 import matplotlib.pyplot as plt 
 
 # GOAL: Create a connected graph of robots, goals, and possible location nodes
-def include_robot(robot_locations, goal_locations):
+def include_robot(location_graph, robot_locations, goal_locations):
     """Include the robots' poses in the new tree."""
     # Initialize a location graph
-    location_graph = nx.Graph()
-    locations = []
-
     i = 0
-    # For each of the robot, create a new node
+    # For each of the robot, replace the node's label with the same position to the robot's name 
     while i < len(robot_locations):
-        robot_node_i = "tb3_" + str(i)
+        robot_node_i = "robot_" + str(i)
         x = robot_locations[i][0]
         y = robot_locations[i][1]
-        locations.append((x, y))
-        location_graph.add_node(robot_node_i, location=[x, y])
+        pos = np.array([x, y])
+
+        selected_data = dict( (n,d['pos']) for n,d in location_graph.nodes().items() if np.array_equal(d['pos'], pos) )
+        keys_that_match = list(selected_data.keys())
+        index_to_replace = keys_that_match[0]
+        mapping = {index_to_replace: robot_node_i}
+        location_graph = nx.relabel_nodes(location_graph, mapping)
+
         i += 1
 
     i = 0
-    # For each of the goal, create a new node
+    # For each of the goal, replace the node's label with the same position to the robot's name 
     while i < len(goal_locations):
         goal_node_i = "goal_" + str(i)
         x = goal_locations[i][0]
         y = goal_locations[i][1]
-        locations.append((x, y))
-        location_graph.add_node(goal_node_i, location=[x, y])
+        pos = np.array([x, y])
+
+        selected_data = dict( (n,d['pos']) for n,d in location_graph.nodes().items() if np.array_equal(d['pos'], pos))
+        keys_that_match = list(selected_data.keys())
+        index_to_replace = keys_that_match[0]
+        mapping = {index_to_replace: goal_node_i}
+        location_graph = nx.relabel_nodes(location_graph, mapping)
         i += 1
+    
     return location_graph
-
-def construct_graph(spanning_tree, location_graph, num_node, threshold, grid_x, grid_y, robot_locations):
-    """Create a spanning tree that covers all nodes."""
-    # Default node name
-    node_str = "node"
-    locations = []
-    # initialize the nodes in the graph
-    i = 0
-    while i < num_node:
-        x = random.randint(0, grid_x)
-        y = random.randint(0, grid_y)
-        # let's make sure that the location is not repeated and it's not touching one of the robots' initial pose
-        if (x, y) not in locations and [x, y] not in robot_locations:
-            locations.append((x,y))
-            new_node = node_str + str(i)
-            spanning_tree.add_node(new_node, location=[x, y])
-            i += 1
-    # Iterate through all the possible combinations of the nodes
-    for node_i in spanning_tree.nodes:
-        for node_j in spanning_tree.nodes:
-            if node_i != node_j:
-                # don't link the robots together (avoid collisions)
-                if node_i[:4] == "tb3" and node_j[:4] == "tb3":
-                    continue
-                else:
-                    # compute the distance between the two nodes
-                    positions_i = spanning_tree.nodes[node_i]["location"]
-                    positions_j = spanning_tree.nodes[node_j]["location"]
-                    distance = math.sqrt((positions_i[0] - positions_j[0]) ** 2 + (positions_i[1] - positions_j[1]) ** 2)
-
-                    # if nodes are close enough to make the references
-                    if distance < threshold:
-                        spanning_tree.add_edge(node_i, node_j, weight=distance)
-                
-    # Recursively call until the graph becomes connected
-    if not nx.is_connected(spanning_tree):
-        spanning_tree = location_graph.copy()
-        return construct_graph(spanning_tree, location_graph, num_node, threshold, grid_x, grid_y, robot_locations)
-    return spanning_tree
-
 
 def allocate(goal_names, robot_names, location_graph, constraint_list):
     """Allocate the robots' names to the goals."""
@@ -116,6 +88,7 @@ def allocate(goal_names, robot_names, location_graph, constraint_list):
             task_path_dict[most_eff_robot] = min_path
             robot_to_allocate.remove(most_eff_robot)
     
+    rospy.loginfo(task_path_dict)
     return task_allocation_dict, task_path_dict
 
 def reallocation(constraint_list, robot_names, location_graph, task_allocation_dict, task_path_dict):
@@ -148,13 +121,13 @@ def calculate_timestamp(task_path_dict, location_graph, robot_linear_vel, robot_
 
         i = 0
         while i < len(path_list) - 1:
-            # calculating the linear time
-            lin_distance = location_graph.get_edge_data(path_list[i], path_list[i+1])["weight"]
-            linear_time = lin_distance / robot_linear_vel
+            # retrieving the two positions
+            positions_i = location_graph.nodes[path_list[i]]["pos"]
+            positions_j = location_graph.nodes[path_list[i+1]]["pos"]
 
-            # calculating the angular_time
-            positions_i = location_graph.nodes[path_list[i]]["location"]
-            positions_j = location_graph.nodes[path_list[i+1]]["location"]
+            # calculating the linear time
+            lin_distance = math.sqrt((positions_i[0] - positions_j[0]) ** 2 + (positions_i[1] - positions_j[1]) ** 2)
+            linear_time = lin_distance / robot_linear_vel
 
             # theoretically, find the angular distance between the
             # two positions, subtract it from the current z orientation
@@ -252,14 +225,14 @@ def convert_path_to_locations(location_graph, task_path_dict):
         robot_node_list = task_path_dict[robot]
         robot_location_list = []
         for node in robot_node_list:
-            node_location = location_graph.nodes[node]["location"]
-            robot_location_list.append(node_location)
+            node_location = location_graph.nodes[node]["pos"]
+            robot_location_list.append(node_location.tolist())
         
         # Reupdate the path dictionary
         task_path_dict[robot] = robot_location_list
     return task_path_dict
 
-def perform_cbs():
+def perform_cbs(location_graph):
     """A blackbox to perform conflict-based search"""
     robot_linear_vel = rospy.get_param("robot_linear_vel") # m/s
     robot_angular_vel = rospy.get_param("robot_angular_vel") # rad/s
@@ -276,18 +249,11 @@ def perform_cbs():
     task_path_dict = {}
     time_stamp_dict = {}
 
-    # Let's create the base global location graph
-    location_graph = include_robot(robot_locations, goal_locations)
-    num_node = rospy.get_param("num_node")
-    threshold = rospy.get_param("threshold")
-    grid_x = rospy.get_param("grid_x")
-    grid_y = rospy.get_param("grid_y")
-    location_graph = construct_graph(location_graph.copy(), location_graph, num_node, 
-                                    threshold, grid_x, grid_y, robot_locations)
-
+    # Include the robots in the graph
+    location_graph = include_robot(location_graph, robot_locations, goal_locations)
 
     nx.draw(location_graph, with_labels=True)
-    plt.savefig("/root/catkin_ws/src/location_graph.png")
+    plt.savefig("location_graph.png")
 
     # Allocate the robots to each goals and calculate the time stamp of when each robot will reach the node
     # For the first allocate, there are no constraints
