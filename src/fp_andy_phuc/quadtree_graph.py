@@ -6,6 +6,7 @@ import networkx as nx
 from PIL import Image
 import numpy as np
 import rospy
+from queue import Queue
 
 # Main function. Gives a hierarchical graph from a map.
 
@@ -155,18 +156,59 @@ def subdivide(square, iterations, map, sub_map, index):
     else:
         return None, None
 
+
+# A version of dijkstra's algorithm that finds ALL shortest paths
+# to the end. Returns a potential path and a reduced search space
+
+def dijkstra_all(graph, start, end):
+    g = graph.copy()
+    q = Queue()
+    for i in g.nodes():
+        [i]["distance"] = np.inf
+        [i]["previous"] = []
+        if i == g.nodes(start):
+            [i]["distance"] = 0
+        else:
+            q.put(i)
+    while not q.empty():
+        u = q.get()
+        for v in g.neighbors(u):
+            dist = np.linalg.norm(u["pos"] - v["pos"])
+            alt = g.nodes[u]["distance"] + dist
+            if alt < g.nodes[v]["distance"] + 0.001:
+                g.nodes[v]["distance"] = alt
+                g.nodes[v]["previous"] = [u]
+            elif alt <= g.nodes[v]["distance"] + 0.001:
+                g.nodes[v]["previous"].append(u)
+    if g.nodes[end]["distance"] == np.inf:
+        return None, None
+    else:
+        nodes = []
+        q = Queue()
+        q.put(g.nodes()[end])
+        while not q.empty():
+            u = q.get()
+            nodes.append(u)
+            for v in u["previous"]:
+                q.put(v)
+        path = []
+        end_n = g.nodes()[end]
+        while end_n != g.nodes()[start]:
+            path.append(end_n)
+            end_n = end_n["previous"][0]
+        path.append(g.nodes()[start])
+
+        return path, nodes
+
 # Hierarchical Pathfinding A*
 
 
-def hpa(graphs, start, end, nodes):
+def hpa(graphs, start, end):
     depth = len(graphs)-1
-    graph = graphs[depth].copy()
+    graph = graphs[depth]
     while True:
-        path = nx.single_source_dijkstra_path(graph, start, end)
+        path, nodes = dijkstra_all(graph, start, end)
         if depth == 0:
             return path
         depth -= 1
-        new_nodes = []
-        for i in path:
-            new_nodes.extend(nodes[i]["children"])
-        graph = graphs[depth].subgraph(new_nodes)
+        graph = graphs[depth].subgraph(nodes)
